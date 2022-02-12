@@ -4,6 +4,4 @@ matplotlib
 ipython
 flask
 gunicorn
-#pyqt5
-#tkinter
-#pyqt5
+
