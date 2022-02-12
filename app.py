@@ -12,7 +12,7 @@ import binascii
 
 app = Flask(__name__)
 
-# initial configuration for glider
+# small world
 A = np.array([
   [0,0,0,0,0,0,0,0],
   [0,0,0,1,0,0,0,0],
@@ -23,6 +23,7 @@ A = np.array([
   [0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0]])
 
+# bigger world
 B = np.array([
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -64,6 +65,8 @@ K = np.asarray([
   [1,1,1]])
 
 def figure_asset(K, growth):
+  """Subgraphs showing Kernel, Growth and cross-section
+  """
   K_sum = np.sum(K)
   K_size = K.shape[0]
   K_mid = K_size // 2
@@ -93,11 +96,24 @@ def figure_world(A):
   return fig
 
 def growth(U):
+  # U is a 2-dim matrix that in the case of the 'ring'-kernel the count of neighbors with a 1
+  # the formula returns
+  #   1 when exactly 3 neihbours exist
+  #   0 when exactly 2 neighbors exist
+  #   -1 otherwise
+  # Because this is used as growth to the original value this means
+  #   empty fields get filled, when exactly 3 neighbors exist
+  #   filled fields survive when 2 or 3 neihbours exist
+  #   all other fields die
   return 0 + (U==3) - ((U<2)|(U>3))
 
 def evolve(i):
   global A
+  # U is filled with the sum values of the neighbours where the kernel is applied
+  # for the ring kernel and the neighbour values either 0 or 1 this means a count 
+  # of neighbours 
   U = scipy.signal.convolve2d(A, K, mode='same', boundary='wrap')
+  # add the growth value, see description of growth and clip to min 0 and max 1
   A = np.clip(A + growth(U), 0, 1)
   img.set_array(A)
   return img,
@@ -108,29 +124,31 @@ def get_video():
 
     # render video
     fig = figure_world(A)
-
-    # open IO object
-    byte_buffer = BytesIO()
-    # print raw canvas data to IO object
-    fig.canvas.print_png(byte_buffer)
-
-    # convert raw binary data to base64
-    # I use this to embed in an img tag
-    img_data = binascii.b2a_base64(byte_buffer.getvalue())
-
-    # keep img tag outter html in its own variable
-    img_html = '<img src="data:image/png;base64,{}&#10;">'.format(img_data)
-    print(img_html)
-    anim = matplotlib.animation.FuncAnimation(fig, evolve, frames=15, interval=500)
+    anim = matplotlib.animation.FuncAnimation(fig, evolve, frames=15, interval=2000)
     return anim.to_html5_video()
 
+def fig_2_png(fig):
+    # create IO buffer
+    byte_buffer = BytesIO()
 
-@app.route("/")
+    # print raw canvas data to IO object
+    fig.canvas.print_png(byte_buffer)
+    img_data_str = binascii.b2a_base64(byte_buffer.getvalue())
+
+    # create img element
+    img_html = f"<img src=\"data:image/png;base64,{img_data_str}&#10;\">"
+    return img_html
+
+
+@app.route("/flask")
 def home():
+    """simplest possible example"""
     return "Hello, Flask!"
 
 @app.route("/hello/<name>")
 def hello_there(name):
+    """ example with parameters
+    """
     now = datetime.now()
     formatted_now = now.strftime("%A, %d %B, %Y at %X")
 
@@ -144,7 +162,13 @@ def hello_there(name):
         clean_name = "Friend"
 
     content = "Hello there, " + clean_name + "! It's " + formatted_now
+    return content
+
+@app.route("/")
+def conway():
+    """Entry point for conway
+    """
     html= get_video()
-    print(html)
+    #print(html)
     return html
 
