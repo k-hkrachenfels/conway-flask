@@ -6,6 +6,8 @@ import scipy.signal
 import matplotlib
 import matplotlib.pylab as plt
 import matplotlib.animation
+from io import BytesIO
+import binascii
 
 
 app = Flask(__name__)
@@ -21,7 +23,7 @@ A = np.array([
   [0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0]])
 
-A = np.array([
+B = np.array([
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -106,7 +108,20 @@ def get_video():
 
     # render video
     fig = figure_world(A)
-    anim = matplotlib.animation.FuncAnimation(fig, evolve, frames=150, interval=500)
+
+    # open IO object
+    byte_buffer = BytesIO()
+    # print raw canvas data to IO object
+    fig.canvas.print_png(byte_buffer)
+
+    # convert raw binary data to base64
+    # I use this to embed in an img tag
+    img_data = binascii.b2a_base64(byte_buffer.getvalue())
+
+    # keep img tag outter html in its own variable
+    img_html = '<img src="data:image/png;base64,{}&#10;">'.format(img_data)
+    print(img_html)
+    anim = matplotlib.animation.FuncAnimation(fig, evolve, frames=15, interval=500)
     return anim.to_html5_video()
 
 
